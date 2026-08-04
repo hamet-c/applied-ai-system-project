@@ -1,4 +1,4 @@
-"""VibeFinder 2.0 — Streamlit UI for the RAG music recommender.
+"""Songly — Streamlit UI for the RAG music recommender.
 
 Run with:  streamlit run app.py
 """
@@ -7,7 +7,7 @@ import streamlit as st
 
 from src.pipeline import RecommenderPipeline
 
-st.set_page_config(page_title="VibeFinder 2.0", page_icon="🎵", layout="centered")
+st.set_page_config(page_title="Songly", page_icon="🎵", layout="centered")
 
 EXAMPLE_QUERIES = [
     "calm acoustic songs for studying late at night",
@@ -60,7 +60,7 @@ with st.sidebar:
     )
 
 # ---------- Main ----------
-st.title("🎵 VibeFinder 2.0")
+st.title("🎵 Songly")
 st.caption("A RAG-powered music recommender over a tiny catalog. "
            "Describe what you want to hear — in your own words.")
 

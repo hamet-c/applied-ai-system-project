@@ -12,7 +12,10 @@ from typing import List, Optional
 
 from src.index import Candidate
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+# The "-latest" alias tracks Google's current stable Flash model. A pinned
+# version ("gemini-2.5-flash") 404'd for new API keys within months — the
+# alias keeps the app working as Google rotates models.
+DEFAULT_MODEL = "gemini-flash-latest"
 
 
 def _load_dotenv_if_present() -> None:

@@ -1,0 +1,28 @@
+Loaded songs: 18
+
+============================================================
+  Query: "happy upbeat pop songs"
+============================================================
+
+  Retrieved candidates (top 8):
+    - Rooftop Lights (indie pop/happy)  relevance=0.54  matched: happy, pop, upbeat
+    - Sunrise City (pop/happy)  relevance=0.47  matched: happy, pop, upbeat
+    - Gym Hero (pop/intense)  relevance=0.31  matched: happy, pop, upbeat
+    - Paper Moon Dreams (dream pop/dreamy)  relevance=0.31  matched: pop
+    - Neon Warehouse (electronic/energetic)  relevance=0.14  matched: happy, pop, upbeat
+    - Night Drive Loop (synthwave/moody)  relevance=0.08  matched: pop, upbeat
+    - Velvet Hours (r&b/romantic)  relevance=0.07  matched: happy
+    - Island Time (reggae/uplifting)  relevance=0.07  matched: happy
+
+  Recommendations  [source: fallback]
+  note: Gemini call failed (ClientError) — used fallback.
+
+  1. Sunrise City - Neon Echo
+     why: matches your favorite genre (pop); matches your mood (happy); very close to your energy level; matched your search terms: happy, pop, upbeat
+
+  2. Gym Hero - Max Pulse
+     why: matches your favorite genre (pop); very close to your energy level; matched your search terms: happy, pop, upbeat
+
+  3. Rooftop Lights - Indigo Parade
+     why: matches your mood (happy); very close to your energy level; matched your search terms: happy, pop, upbeat
+

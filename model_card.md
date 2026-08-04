@@ -1,5 +1,7 @@
 # 🎧 Model Card: Music Recommender Simulation
 
+> Sections 1–9 describe the original rule-based **VibeFinder 1.0** (Modules 1–3), which still lives inside the project as the fallback scorer. Sections 10–13 are the responsible-AI reflection for the RAG-powered **Songly** (see README).
+
 ## 1. Model Name  
 
 **VibeFinder 1.0**
@@ -147,3 +149,25 @@ My biggest learning moment was seeing that a recommender is really just a scorin
 AI tools helped me move fast. I used them to generate extra songs for the catalog, to talk through how to weight genre against mood, and to write the CSV loading. But I still had to double-check the results, like when a loud metal song ranked first for a "relaxed" user. The AI would happily write working code, but deciding whether the output actually made sense was on me.
 
 What surprised me most was how something this simple still feels like a real recommendation. There is no machine learning here, just points and a sort, but the reasons it gives make it feel smart. If I extended it, I would fix the genre bias first, since that was the clearest flaw I found.
+
+---
+
+## 10. Limitations and Biases (Songly)
+
+The retrieval is keyword-based, so it only understands words I thought to put in the index. "Music to fall asleep to" returned *nothing* until I added "asleep" to the vocabulary — embeddings would handle paraphrases like that, keywords never fully will. The catalog is still 18 songs, so some queries have exactly one right answer (every romantic query returns Velvet Hours #1) and there's zero diversity in the results. The system is English-only. And the LLM explanations are a subtle risk: they sound equally confident whether the match is great or mediocre, because Gemini is told to justify whatever the retriever handed it — it never says "honestly, nothing here fits."
+
+## 11. Potential Misuse and Prevention
+
+Two realistic ones. First, a recommender like this launders whatever is in its data: if the catalog were curated to push certain artists (pay-for-play), the AI would generate confident, factual-sounding reasons for rigged picks. The "What was retrieved" panel is my main defense — users can see exactly what the model was given and judge the grounding themselves. Second, prompt injection: song metadata gets pasted into the LLM prompt, so a malicious "song title" could try to steer the model. The Validator limits the damage — output titles must exist in the retrieved set, and the strict JSON format rejects anything else. Keeping the source badge visible (gemini vs fallback) also means nobody mistakes templated output for AI judgment or vice versa.
+
+## 12. What Surprised Me While Testing Reliability
+
+The biggest surprise: my first live Gemini call failed with a 404 because the model I'd pinned (`gemini-2.5-flash`) had already been retired for new API keys. The fallback caught it and the app kept working — which honestly proved the architecture better than any test I wrote. Second surprise: recall@5 was **identical (0.90)** in Gemini mode and fallback mode. Retrieval decides *what's findable*; the LLM only decides ordering and explanations. I expected the LLM to boost the numbers, but its real value showed up in judgment — for "romantic r&b for a date night" it skipped a keyword-strong hip-hop track for jazz and ambient, which the rule-based scorer got wrong.
+
+## 13. My Collaboration with AI
+
+I built this project working with an AI coding assistant (Claude), giving it the assignment requirements step by step and reviewing what it produced.
+
+**One helpful suggestion:** translating the numeric features into searchable words (energy 0.22 → "calm, mellow") plus related-genre credit in the index (a metal query also surfaces rock). That one design idea fixed the exact genre-bias flaw documented in section 6 of this card, and it made free-text search possible without any embedding model.
+
+**One flawed suggestion:** the AI wrote the generator with `gemini-2.5-flash` hardcoded as the default model — which was already deprecated for new API keys, so the first real API call 404'd. It looked completely reasonable in code review; only running it live exposed the problem. The AI also initially wrote a test asserting an exact ranking position that failed for a song that was ranked 5th among five equally-valid answers. Both times the fix was easy, but both times *I* had to run the system and judge the output — the AI's code always looked right, and looking right isn't the same as being right.

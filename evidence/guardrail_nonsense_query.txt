@@ -1,0 +1,20 @@
+Loaded songs: 18
+
+============================================================
+  Query: "xyzzy quux flurble"
+============================================================
+
+  Retrieved candidates (top 0):
+
+  Recommendations  [source: fallback]
+  note: No strong keyword matches in the catalog — showing best rule-based guesses.
+
+  1. Sunrise City - Neon Echo
+     why: closest available match
+
+  2. Midnight Coding - LoRoom
+     why: closest available match
+
+  3. Storm Runner - Voltline
+     why: closest available match
+

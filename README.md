@@ -1,4 +1,4 @@
-# 🎵 VibeFinder 2.0 — a RAG-Powered Music Recommender
+# 🎵 Songly — a RAG-Powered Music Recommender
 
 ## Original Project (Modules 1–3)
 
@@ -6,7 +6,7 @@ This project evolved from the **Music Recommender Simulation ("VibeFinder 1.0")*
 
 ## Title and Summary
 
-**VibeFinder 2.0** turns that rule-based scorer into a **Retrieval-Augmented Generation (RAG)** system with a Streamlit web UI. You describe what you want to hear in your own words — *"calm acoustic songs for studying late at night"* — and the system:
+**Songly** turns that rule-based scorer into a **Retrieval-Augmented Generation (RAG)** system with a Streamlit web UI. You describe what you want to hear in your own words — *"calm acoustic songs for studying late at night"* — and the system:
 
 1. **Retrieves** the most relevant songs from the catalog using a TF-IDF search index,
 2. **Generates** ranked picks with conversational explanations using the Gemini API, grounded in **only** the retrieved songs,
@@ -81,43 +81,35 @@ Three checkpoints watch the AI's output: the **Validator** at runtime, the **Eva
 
 ## Sample Interactions
 
-Real CLI output, captured in fallback mode (no API key). With a key set, the picks come from Gemini with generated one-sentence reasons instead of templated ones, and the source badge reads `gemini`.
+Real CLI output, captured from actual runs — the first two with a Gemini key set (`source: gemini`), the third with no key (`source: fallback`), showing both modes work.
 
-**1. `python -m src.main "calm acoustic songs for studying late at night"`**
+**1. `python -m src.main "calm acoustic songs for studying late at night"`** — Gemini mode
 
 ```
 Retrieved candidates (top 8):
-  - Spacewalk Thoughts (ambient/chill)   relevance=0.26  matched: acoustic, calm, late, night, studying
-  - Autumn Nocturne (classical/melancholic)  relevance=0.24  matched: acoustic, calm, late, night, studying
-  - Midnight Coding (lofi/chill)         relevance=0.21  matched: acoustic, late, night, studying
-  - Focus Flow (lofi/focused)            relevance=0.21  matched: acoustic, late, night, studying
-  - Library Rain (lofi/chill)            relevance=0.21  matched: acoustic, late, night, studying
+  - Spacewalk Thoughts (ambient/chill)      relevance=0.24  matched: acoustic, calm, late, night, studying
+  - Autumn Nocturne (classical/melancholic) relevance=0.23  matched: acoustic, calm, late, night, studying
+  - Midnight Coding (lofi/chill)            relevance=0.21  matched: acoustic, late, night, studying
+  - Focus Flow (lofi/focused)               relevance=0.21  matched: acoustic, late, night, studying
+  - Library Rain (lofi/chill)               relevance=0.21  matched: acoustic, late, night, studying
   ...
 
-Recommendations  [source: fallback]
-  1. Focus Flow - LoRoom
-     why: matches your mood (focused); very close to your energy level;
-          matches your acoustic preference; matched your search terms: acoustic, late, night, studying
+Recommendations  [source: gemini]
+  1. Library Rain - Paper Lanterns
+     why: With a high acousticness of 0.86 and a lofi genre, this song delivers a chill mood
+          at a steady 72 BPM tempo with low 0.35 energy that is ideal for late-night study sessions.
   2. Spacewalk Thoughts - Orbit Bloom
-     why: very close to your energy level; matches your acoustic preference;
-          matched your search terms: acoustic, calm, late, night, studying
-  3. Autumn Nocturne - The Hallberg Quartet
-     ...
+     why: This ambient track features a very high acousticness of 0.92, a slow tempo of 60 BPM,
+          a low 0.28 energy, and a chill mood perfect for keeping calm while working late.
+  3. Coffee Shop Stories - Slow Stereo
+     why: Offering a relaxed mood and smooth jazz genre, this track combines a high 0.89
+          acousticness with a low 0.37 energy and a comfortable 90 BPM tempo for quiet focus.
+  ...
 ```
 
-**2. `python -m src.main "high energy workout music" -k 3`**
+Every pick is a real retrieved song, and every claim in the explanations (BPM, energy, acousticness) matches the catalog data — that's the grounding working.
 
-```
-Recommendations  [source: fallback]
-  1. Storm Runner - Voltline
-     why: very close to your energy level; matched your search terms: energy, high, workout
-  2. Gym Hero - Max Pulse
-     why: very close to your energy level; matched your search terms: energy, high, workout
-  3. Neon Warehouse - Pulsewave
-     why: very close to your energy level; matched your search terms: energy, high, workout
-```
-
-**3. `python -m src.main "romantic r&b for a date night" -k 3`**
+**2. `python -m src.main "romantic r&b for a date night" -k 3`** — Gemini mode
 
 ```
 Retrieved candidates (top 8):
@@ -126,14 +118,67 @@ Retrieved candidates (top 8):
   - Coffee Shop Stories (jazz/relaxed) relevance=0.10  matched: night, r&b
   ...
 
-Recommendations  [source: fallback]
+Recommendations  [source: gemini]
   1. Velvet Hours - Mara Soul
-     why: matches your favorite genre (r&b); matches your mood (romantic); matched your search terms: r&b, romantic
-  2. Concrete Kings - Vell Rhymes
-     why: matched your search terms: night, r&b
+     why: This track is a perfect fit for a date night with its r&b genre, romantic mood,
+          moderate energy of 0.55, steady tempo of 88 BPM, and subtle acousticness of 0.31.
+  2. Coffee Shop Stories - Slow Stereo
+     why: This song provides a cozy date night vibe through its smooth jazz genre, relaxed
+          mood, low energy of 0.37, gentle tempo of 90 BPM, and rich acousticness of 0.89.
+  3. Spacewalk Thoughts - Orbit Bloom
+     why: It offers an intimate date night atmosphere with its ambient genre, chill mood,
+          low energy of 0.28, slow tempo of 60 BPM, and warm acousticness of 0.92.
 ```
 
-Note in example 3 how the hip-hop and jazz songs matched "r&b" — that's the related-genre credit in the index, which directly fixes the "exact genre match only" bias documented in the v1 model card.
+Two things worth noticing: the hip-hop and jazz songs were retrieved because of the index's related-genre credit (fixing the "exact genre match only" bias from the v1 model card), and Gemini then *judged* among them — it skipped the keyword-strong but vibe-wrong hip-hop track in favor of jazz and ambient, which the rule-based fallback ranked #2 on pure keyword overlap.
+
+**3. `python -m src.main "high energy workout music" -k 3`** — fallback mode (no API key)
+
+```
+Recommendations  [source: fallback]
+  note: No GEMINI_API_KEY set — using rule-based fallback.
+  1. Storm Runner - Voltline
+     why: very close to your energy level; matched your search terms: energy, high, workout
+  2. Gym Hero - Max Pulse
+     why: very close to your energy level; matched your search terms: energy, high, workout
+  3. Neon Warehouse - Pulsewave
+     why: very close to your energy level; matched your search terms: energy, high, workout
+```
+
+## Reproducible Execution Evidence
+
+Full, unedited terminal logs live in [evidence/](evidence/) — each generated by the exact command named in the file. To regenerate any of them, run the command yourself:
+
+| Command | Log | What it proves |
+|---|---|---|
+| `pytest -q` | [pytest_output.txt](evidence/pytest_output.txt) | 27/27 automated tests pass |
+| `python -m src.evaluation` | [evaluation_gemini.txt](evidence/evaluation_gemini.txt) | Golden-query metrics on the live Gemini path (recall@5 = 0.90, 0 hallucinations) |
+| `python -m src.main "calm acoustic songs for studying late at night"` | [sample_query_gemini.txt](evidence/sample_query_gemini.txt) | Full RAG flow: retrieval → grounded Gemini picks |
+| `python -m src.main "xyzzy quux flurble" -k 3` | [guardrail_nonsense_query.txt](evidence/guardrail_nonsense_query.txt) | Nonsense input degrades gracefully, honest note, no crash |
+| `GEMINI_MODEL=nonexistent-model-for-testing python -m src.main "happy upbeat pop songs" -k 3` | [guardrail_api_failure.txt](evidence/guardrail_api_failure.txt) | A failing API call is caught and the rule-based fallback still answers |
+
+The guardrail logs are the interesting ones. Forcing an API failure (bogus model name) produces:
+
+```
+Recommendations  [source: fallback]
+note: Gemini call failed (ClientError) — used fallback.
+
+1. Sunrise City - Neon Echo
+   why: matches your favorite genre (pop); matches your mood (happy); very close to your
+        energy level; matched your search terms: happy, pop, upbeat
+...
+```
+
+And a nonsense query retrieves zero candidates but never crashes:
+
+```
+Retrieved candidates (top 0):
+
+Recommendations  [source: fallback]
+note: No strong keyword matches in the catalog — showing best rule-based guesses.
+```
+
+The third guardrail — the Validator rejecting hallucinated titles and retrying — can't be demoed on demand (Gemini rarely hallucinates against 8 candidates), so it's proven offline by unit tests instead: `test_hallucination_triggers_retry_then_succeeds` and `test_persistent_hallucination_falls_back` in [tests/test_pipeline.py](tests/test_pipeline.py) script a fake Gemini that returns invented titles and assert the retry + fallback behavior.
 
 ## Design Decisions
 
@@ -146,7 +191,7 @@ Note in example 3 how the hip-hop and jazz songs matched "r&b" — that's the re
 
 ## Testing Summary
 
-> **Summary: 27/27 automated tests pass. Golden-query recall@5 averaged 0.90 with 0 hallucinated titles. Edge-case evaluation found one real failure — a paraphrased query ("music to fall asleep to") retrieved nothing because the index vocabulary lacked the word "asleep". Accuracy improved after expanding the derived tags; the case is now a regression test.**
+> **Summary: 27/27 automated tests pass. Golden-query recall@5 averaged 0.90 with 0 hallucinated titles — in both Gemini and fallback modes. Edge-case evaluation found two real failures: a paraphrased query ("music to fall asleep to") retrieved nothing because the index vocabulary lacked the word "asleep", and the originally pinned Gemini model (`gemini-2.5-flash`) was retired by Google and 404'd — the pipeline degraded gracefully to the fallback exactly as designed, and switching to the `gemini-flash-latest` alias fixed it. Both cases improved the system and are now covered.**
 
 The system's reliability is measured three ways: **automated tests** (unit + golden-query metrics), **human evaluation** (the edge-case table below), and **error handling** (every degraded path — missing API key, hallucinated titles, API exceptions, zero retrieval matches — records *why* it degraded and surfaces that note in the CLI and UI).
 
@@ -161,7 +206,7 @@ The system's reliability is measured three ways: **automated tests** (unit + gol
 | romantic r&b for a date night | 1/1 | 1.00 |
 | sad slow classical music | 1/1 | 1.00 |
 
-**Average recall@5: 0.90 · hallucinated titles: 0** (fallback mode).
+**Average recall@5: 0.90 · hallucinated titles: 0** — measured in *both* modes: the harness was run once with a Gemini key (all six queries answered by the LLM) and once without (rule-based fallback), and the recall and hallucination numbers came out identical.
 
 **Human edge-case evaluation** (all inputs actually run against the system; results verified by hand):
 
@@ -175,7 +220,7 @@ The system's reliability is measured three ways: **automated tests** (unit + gol
 | "" (empty input) | Handles gracefully, no crash | Pass — fallback over the full catalog (unit-tested); the UI shows a prompt instead of results |
 | LLM returns an invented song title (simulated) | Validator rejects it, retries once, then falls back | Pass — unit-tested offline with a fake Gemini |
 
-**What didn't work at first:** two honest failures. (1) My initial retrieval test demanded that "Library Rain" rank in the top 4 for the study query — it came 5th, behind four other *equally valid* study songs. The lesson: when ranking within a cluster of good answers is fuzzy, test that the cluster dominates, not an exact order. (2) The paraphrased query "music to fall asleep to" retrieved zero candidates, because the hand-curated index vocabulary knew "sleep" but not "asleep" — keyword retrieval's core weakness. The fix (expanding the derived tags) took one line, but only edge-case testing revealed the gap.
+**What didn't work at first:** three honest failures. (1) My initial retrieval test demanded that "Library Rain" rank in the top 4 for the study query — it came 5th, behind four other *equally valid* study songs. The lesson: when ranking within a cluster of good answers is fuzzy, test that the cluster dominates, not an exact order. (2) The paraphrased query "music to fall asleep to" retrieved zero candidates, because the hand-curated index vocabulary knew "sleep" but not "asleep" — keyword retrieval's core weakness. The fix (expanding the derived tags) took one line, but only edge-case testing revealed the gap. (3) The first live Gemini call failed with a 404: the model I had pinned (`gemini-2.5-flash`) had been retired for new API keys. The error handling worked exactly as designed — the CLI reported `Gemini call failed (ClientError) — used fallback` and still returned good recommendations — and the permanent fix was pointing the default at the `gemini-flash-latest` alias, which tracks whatever Flash model Google currently ships.
 
 **What I learned:** evaluation needs *both* levels — unit tests catch broken logic, but only golden queries told me whether the system's answers were actually good. And "hallucinated titles: 0" is only meaningful because the harness measures it on every run.
 

@@ -1,0 +1,33 @@
+Loaded songs: 18
+
+============================================================
+  Query: "calm acoustic songs for studying late at night"
+============================================================
+
+  Retrieved candidates (top 8):
+    - Spacewalk Thoughts (ambient/chill)  relevance=0.24  matched: acoustic, calm, late, night, studying
+    - Autumn Nocturne (classical/melancholic)  relevance=0.23  matched: acoustic, calm, late, night, studying
+    - Midnight Coding (lofi/chill)  relevance=0.21  matched: acoustic, late, night, studying
+    - Focus Flow (lofi/focused)  relevance=0.21  matched: acoustic, late, night, studying
+    - Library Rain (lofi/chill)  relevance=0.21  matched: acoustic, late, night, studying
+    - Coffee Shop Stories (jazz/relaxed)  relevance=0.20  matched: acoustic, late, night, studying
+    - Dust and Pine (folk/nostalgic)  relevance=0.20  matched: acoustic, late, night, studying
+    - Night Drive Loop (synthwave/moody)  relevance=0.04  matched: night
+
+  Recommendations  [source: gemini]
+
+  1. Library Rain - Paper Lanterns
+     why: This lofi track offers a chill mood, a low energy of 0.35, a slow tempo of 72 BPM, and a high acousticness of 0.86, making it ideal for calm late-night studying.
+
+  2. Spacewalk Thoughts - Orbit Bloom
+     why: With an ambient genre, a chill mood, a low energy of 0.28, a slow 60 BPM tempo, and 0.92 acousticness, this track provides a tranquil environment for late-night study sessions.
+
+  3. Autumn Nocturne - The Hallberg Quartet
+     why: This classical song features a melancholic mood, a low energy of 0.22, a 66 BPM tempo, and a 0.95 acousticness rating to keep your late-night studying peaceful.
+
+  4. Coffee Shop Stories - Slow Stereo
+     why: Delivering a relaxed mood in the jazz genre, this song has a 0.37 energy level, a 90 BPM tempo, and 0.89 acousticness for calm focus late at night.
+
+  5. Focus Flow - LoRoom
+     why: This lofi song features a focused mood, an energy of 0.4, an 80 BPM tempo, and 0.78 acousticness to help you stay relaxed while studying late.
+
