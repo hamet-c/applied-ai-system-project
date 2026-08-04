@@ -1,0 +1,123 @@
+classDiagram
+    %% Music Recommender — RAG architecture
+    %% Data flow: User query -> StreamlitApp -> RecommenderPipeline ->
+    %% Retriever (searches SongIndex) -> GeminiGenerator (grounded in
+    %% retrieved songs) -> Validator -> Recommendations back to the UI.
+    %% AI results are checked by: Validator (runtime), EvaluationHarness
+    %% + pytest (testing), and the User reviewing picks against the
+    %% retrieved-songs panel (human oversight).
+
+    class User {
+        +enterQuery(text string) void
+        +reviewRecommendations(recs Recommendation[]) void
+    }
+
+    class StreamlitApp {
+        +renderQueryBox() string
+        +renderRecommendationCards(recs Recommendation[]) void
+        +renderRetrievedPanel(candidates Candidate[]) void
+    }
+
+    class RecommenderPipeline {
+        +recommend(query string, k int) Recommendation[]
+        -retryGeneration(query string, candidates Candidate[]) Recommendation[]
+        -useFallback(query string, candidates Candidate[]) Recommendation[]
+    }
+
+    class SongCatalog {
+        +string csvPath
+        +loadSongs() Song[]
+    }
+
+    class Song {
+        +int id
+        +string title
+        +string artist
+        +string genre
+        +string mood
+        +float energy
+        +float tempoBpm
+        +float valence
+        +float danceability
+        +float acousticness
+    }
+
+    class SongIndex {
+        +build(songs Song[]) void
+        +toDocument(song Song) string
+        +search(query string, topN int) Candidate[]
+    }
+
+    class Retriever {
+        +int topN
+        +retrieve(query string) Candidate[]
+    }
+
+    class Candidate {
+        +Song song
+        +float relevanceScore
+    }
+
+    class GeminiGenerator {
+        +string model
+        +generate(query string, candidates Candidate[]) Recommendation[]
+        -buildGroundedPrompt(query string, candidates Candidate[]) string
+    }
+
+    class Validator {
+        +validate(recs Recommendation[], candidates Candidate[]) bool
+        +findHallucinatedTitles(recs Recommendation[], candidates Candidate[]) string[]
+    }
+
+    class FallbackScorer {
+        +float genreWeight
+        +float moodWeight
+        +float energyWeight
+        +float acousticWeight
+        +scoreSong(prefs UserPrefs, song Song) float
+        +recommend(prefs UserPrefs, songs Song[], k int) Recommendation[]
+    }
+
+    class Recommendation {
+        +Song song
+        +int rank
+        +string explanation
+        +string source
+    }
+
+    class EvaluationHarness {
+        +GoldenQuery[] goldenQueries
+        +run(pipeline RecommenderPipeline) EvalReport
+        +precisionAtK(expected Song[], actual Song[], k int) float
+    }
+
+    class GoldenQuery {
+        +string query
+        +string[] expectedTitles
+    }
+
+    class EvalReport {
+        +float avgPrecisionAtK
+        +int hallucinationCount
+        +toMarkdown() string
+    }
+
+    User "1" --> "1" StreamlitApp : enters query into
+    StreamlitApp "1" --> "1" RecommenderPipeline : calls
+    SongCatalog "1" --> "*" Song : loads from CSV
+    SongIndex "1" --> "*" Song : indexes as text
+    Retriever "1" --> "1" SongIndex : searches
+    Retriever "1" --> "*" Candidate : returns top-N
+    RecommenderPipeline "1" --> "1" Retriever : retrieves with
+    RecommenderPipeline "1" --> "1" GeminiGenerator : generates with
+    RecommenderPipeline "1" --> "1" Validator : checks output with
+    RecommenderPipeline "1" --> "1" FallbackScorer : falls back to
+    GeminiGenerator "1" --> "*" Recommendation : produces
+    Validator "1" --> "*" Recommendation : approves or rejects
+    FallbackScorer "1" --> "*" Recommendation : produces without API
+    RecommenderPipeline "1" --> "*" Recommendation : returns to UI
+    StreamlitApp "1" --> "*" Candidate : shows in retrieved panel
+    User "1" --> "*" Recommendation : reviews (human check)
+    EvaluationHarness "1" --> "1" RecommenderPipeline : measures (testing check)
+    EvaluationHarness "1" --> "*" GoldenQuery : runs
+    EvaluationHarness "1" --> "1" EvalReport : outputs
