@@ -1,54 +1,64 @@
+"""Command line runner for the RAG music recommender.
+
+Usage:
+    python -m src.main "calm acoustic songs for studying late"
+    python -m src.main                 # runs three demo queries
+    python -m src.main -k 3 "workout"  # top 3 picks
+
+The Streamlit UI (streamlit run app.py) is the main interface; this CLI is
+handy for quick checks and for capturing text output for the README.
 """
-Command line runner for the Music Recommender Simulation.
 
-This file helps you quickly run and test your recommender.
+import argparse
 
-You will implement the functions in recommender.py:
-- load_songs
-- score_song
-- recommend_songs
-"""
+from src.pipeline import RecommenderPipeline
 
-from recommender import load_songs, recommend_songs
-
-
-# Profiles we test the recommender against.
-# The first three are normal "personas"; the last two are adversarial
-# edge cases with conflicting or catalog-missing preferences.
-PROFILES = {
-    "High-Energy Pop":   {"genre": "pop",     "mood": "happy",   "energy": 0.9},
-    "Chill Lofi":        {"genre": "lofi",    "mood": "chill",   "energy": 0.35},
-    "Deep Intense Rock": {"genre": "rock",    "mood": "intense", "energy": 0.9},
-    # Adversarial: high energy but a sad mood (should not coexist in real music).
-    "Conflicting (loud + sad)": {"genre": "pop", "mood": "sad", "energy": 0.95},
-    # Adversarial: a genre/mood combo that appears in ZERO catalog songs.
-    "Impossible (metal + relaxed)": {"genre": "metal", "mood": "relaxed", "energy": 0.5},
-}
+DEMO_QUERIES = [
+    "calm acoustic songs for studying late at night",
+    "high energy workout music",
+    "something happy and upbeat for a sunny morning drive",
+]
 
 
-def print_recommendations(name: str, user_prefs: dict, recommendations: list) -> None:
-    """Print one profile's top picks in a clean terminal layout."""
+def run_query(pipeline: RecommenderPipeline, query: str, k: int) -> None:
+    candidates = pipeline.retriever.retrieve(query)
+    recommendations = pipeline.recommend(query, k=k, candidates=candidates)
+
     print()
-    print("=" * 52)
-    print(f"  {name}")
-    print(f"  genre={user_prefs['genre']}  mood={user_prefs['mood']}  energy={user_prefs['energy']}")
-    print("=" * 52)
+    print("=" * 60)
+    print(f'  Query: "{query}"')
+    print("=" * 60)
 
-    for rank, (song, score, explanation) in enumerate(recommendations, start=1):
-        print()
-        print(f"  {rank}. {song['title']} - {song['artist']}")
-        print(f"     score: {score:.2f}")
-        print(f"     why:   {explanation}")
+    print(f"\n  Retrieved candidates (top {len(candidates)}):")
+    for cand in candidates:
+        matched = ", ".join(cand.matched_terms) or "-"
+        print(f"    - {cand.song.title} ({cand.song.genre}/{cand.song.mood})"
+              f"  relevance={cand.relevance_score:.2f}  matched: {matched}")
 
+    source = pipeline.last_source or "-"
+    print(f"\n  Recommendations  [source: {source}]")
+    if pipeline.last_note:
+        print(f"  note: {pipeline.last_note}")
+    for rec in recommendations:
+        print(f"\n  {rec.rank}. {rec.song.title} - {rec.song.artist}")
+        print(f"     why: {rec.explanation}")
     print()
 
 
 def main() -> None:
-    songs = load_songs("data/songs.csv")
+    parser = argparse.ArgumentParser(description="RAG music recommender CLI")
+    parser.add_argument("query", nargs="*", help="free-text music request")
+    parser.add_argument("-k", type=int, default=5, help="number of picks (default 5)")
+    args = parser.parse_args()
 
-    for name, user_prefs in PROFILES.items():
-        recommendations = recommend_songs(user_prefs, songs, k=5)
-        print_recommendations(name, user_prefs, recommendations)
+    pipeline = RecommenderPipeline.from_catalog()
+    print(f"Loaded songs: {len(pipeline.retriever.index.songs)}")
+    if not pipeline.generator.is_available():
+        print("(no GEMINI_API_KEY found - running in rule-based fallback mode)")
+
+    queries = [" ".join(args.query)] if args.query else DEMO_QUERIES
+    for query in queries:
+        run_query(pipeline, query, args.k)
 
 
 if __name__ == "__main__":

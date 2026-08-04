@@ -97,7 +97,9 @@ def _context_tags(song: Song) -> str:
     if song.energy < 0.45:
         tags.append("chill chilled relax relaxed relaxing laid-back unwind wind-down late-night")
     if song.energy < 0.3:
-        tags.append("sleep sleeping bedtime meditation quiet-night")
+        # "asleep"/"sleepy" included: edge-case testing showed the query
+        # "music to fall asleep to" missed the plain "sleep" vocabulary.
+        tags.append("sleep sleeping asleep sleepy bedtime nap meditation quiet-night")
     if song.genre == "synthwave":
         tags.append("driving drive night-drive road roadtrip retro neon")
     return " ".join(tags)

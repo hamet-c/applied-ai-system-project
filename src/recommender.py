@@ -1,53 +1,30 @@
+"""Original Module 1-3 rule-based recommender (VibeFinder 1.0).
+
+This scoring recipe now lives on as the FallbackScorer's engine inside the
+RAG pipeline (src/pipeline.py): it runs when no Gemini API key is set or
+when LLM generation fails validation.
+
+Song and UserProfile moved to src/catalog.py; re-exported here so existing
+imports and tests keep working.
+"""
+
 import csv
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
+from dataclasses import asdict
+from typing import Dict, List, Tuple
 
-@dataclass
-class Song:
-    """
-    Represents a song and its attributes.
-    Required by tests/test_recommender.py
-    """
-    id: int
-    title: str
-    artist: str
-    genre: str
-    mood: str
-    energy: float
-    tempo_bpm: float
-    valence: float
-    danceability: float
-    acousticness: float
+from src.catalog import Song, UserProfile  # noqa: F401  (re-exported)
 
-@dataclass
-class UserProfile:
-    """
-    Represents a user's taste preferences.
-    Required by tests/test_recommender.py
-    """
-    favorite_genre: str
-    favorite_mood: str
-    target_energy: float
-    likes_acoustic: bool
 
-class Recommender:
-    """
-    OOP implementation of the recommendation logic.
-    Required by tests/test_recommender.py
-    """
-    def __init__(self, songs: List[Song]):
-        self.songs = songs
+# Scoring weights. Adjust these to run experiments.
+# Default recipe: genre 2.0, mood 1.0, energy up to 1.0, acoustic 0.5.
+GENRE_WEIGHT = 2.0
+MOOD_WEIGHT = 1.0
+ENERGY_WEIGHT = 1.0
+ACOUSTIC_WEIGHT = 0.5
 
-    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        # TODO: Implement recommendation logic
-        return self.songs[:k]
-
-    def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        # TODO: Implement explanation logic
-        return "Explanation placeholder"
 
 def load_songs(csv_path: str) -> List[Dict]:
-    """Read the CSV into a list of song dicts, converting numeric columns to int/float."""
+    """Read the CSV into a list of song dicts, converting numeric columns."""
     int_fields = ("id", "tempo_bpm")
     float_fields = ("energy", "valence", "danceability", "acousticness")
 
@@ -60,16 +37,7 @@ def load_songs(csv_path: str) -> List[Dict]:
             for field in float_fields:
                 row[field] = float(row[field])
             songs.append(row)
-
-    print(f"Loaded songs: {len(songs)}")
     return songs
-
-# Scoring weights. Adjust these to run experiments.
-# Default recipe: genre 2.0, mood 1.0, energy up to 1.0, acoustic 0.5.
-GENRE_WEIGHT = 2.0
-MOOD_WEIGHT = 1.0
-ENERGY_WEIGHT = 1.0
-ACOUSTIC_WEIGHT = 0.5
 
 
 def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
@@ -87,7 +55,7 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
         score += MOOD_WEIGHT
         reasons.append(f"matches your mood ({song['mood']})")
 
-    # Energy closeness: continuous tie-breaker, up to ENERGY_WEIGHT for an exact match.
+    # Energy closeness: continuous tie-breaker, up to ENERGY_WEIGHT.
     if "energy" in user_prefs:
         closeness = (1.0 - abs(user_prefs["energy"] - song["energy"])) * ENERGY_WEIGHT
         score += closeness
@@ -103,15 +71,41 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
 
     return score, reasons
 
+
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
-    """Score every song, then return the top k as (song, score, explanation) tuples."""
-    # Score every song. Each entry carries the song, its score, and reasons.
+    """Score every song, then return the top k as (song, score, explanation)."""
     scored = []
     for song in songs:
         score, reasons = score_song(user_prefs, song)
         explanation = "; ".join(reasons) if reasons else "no strong matches"
         scored.append((song, score, explanation))
 
-    # Rank: sort a new list by score, highest first, and keep the top k.
     ranked = sorted(scored, key=lambda entry: entry[1], reverse=True)
     return ranked[:k]
+
+
+class Recommender:
+    """OOP wrapper over the scoring recipe, working on Song dataclasses."""
+
+    def __init__(self, songs: List[Song]):
+        self.songs = songs
+
+    @staticmethod
+    def _prefs_from_profile(user: UserProfile) -> Dict:
+        return {
+            "genre": user.favorite_genre,
+            "mood": user.favorite_mood,
+            "energy": user.target_energy,
+            "likes_acoustic": user.likes_acoustic,
+        }
+
+    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
+        prefs = self._prefs_from_profile(user)
+        scored = [(song, score_song(prefs, asdict(song))[0]) for song in self.songs]
+        scored.sort(key=lambda entry: entry[1], reverse=True)
+        return [song for song, _ in scored[:k]]
+
+    def explain_recommendation(self, user: UserProfile, song: Song) -> str:
+        prefs = self._prefs_from_profile(user)
+        _, reasons = score_song(prefs, asdict(song))
+        return "; ".join(reasons) if reasons else "no strong matches"
