@@ -1,14 +1,18 @@
 """Tests for the rule-based FallbackScorer (query -> prefs -> scoring)."""
 
+from pathlib import Path
+
 import pytest
 
 from src.catalog import SongCatalog
 from src.fallback import FallbackScorer
 
+FIXTURE_CSV = Path(__file__).parent / "fixtures" / "songs_small.csv"
+
 
 @pytest.fixture(scope="module")
 def scorer() -> FallbackScorer:
-    return FallbackScorer(SongCatalog().load_songs())
+    return FallbackScorer(SongCatalog(FIXTURE_CSV).load_songs())
 
 
 def test_derive_prefs_finds_genre_mood_and_energy(scorer):

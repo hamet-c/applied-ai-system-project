@@ -47,3 +47,20 @@ def test_duplicates_fail_validation_and_deduplicate():
 
 def test_empty_picks_fail():
     assert Validator().validate([], make_candidates()) is False
+
+
+def test_decorated_titles_are_canonicalized():
+    """Models sometimes echo prompt formatting: '\"Title\" by Artist'."""
+    validator = Validator()
+    candidates = make_candidates()
+    assert validator.match_title('"Sunrise City" by Neon Echo', candidates) == "Sunrise City"
+    assert validator.match_title("'Library Rain' by Paper Lanterns", candidates) == "Library Rain"
+    picks = [{"title": '"Sunrise City" by Neon Echo', "reason": "r"}]
+    assert validator.find_hallucinated_titles(picks, candidates) == []
+
+
+def test_canonicalization_never_rescues_real_hallucinations():
+    validator = Validator()
+    candidates = make_candidates()
+    assert validator.match_title('"Fake Song" by Neon Echo', candidates) == ""
+    assert validator.match_title("Stand by Me", candidates) == ""

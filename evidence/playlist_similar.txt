@@ -1,0 +1,19 @@
+Loaded songs: 7920
+
+============================================================
+  Playlist:
+    - SAD! - XXXTENTACION  (emo rap)
+    - Lucid Dreams - Juice WRLD  (melodic rap, emo rap)
+============================================================
+
+  Similar songs  [source: gemini]
+
+  1. Moonlight - XXXTENTACION  (emo rap)
+     why: This song matches the emo rap genre and sad mood of the playlist, offering a similar melodic cadence to the user's requested tracks.
+
+  2. Wishing Well - Juice WRLD  (melodic rap, emo rap)
+     why: It fits the melodic rap and emo rap style with a sad mood, making it a seamless addition alongside Juice WRLD's other work.
+
+  3. Hope - XXXTENTACION  (emo rap)
+     why: This track shares the emo rap genre and sad mood of the initial playlist while keeping the same vocal-driven aesthetic.
+

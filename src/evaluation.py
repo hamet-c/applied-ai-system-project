@@ -124,9 +124,13 @@ class EvaluationHarness:
 
 
 def main() -> None:
-    pipeline = RecommenderPipeline.from_catalog()
+    # Golden labels are tied to the frozen 18-song fixture catalog, so the
+    # evaluation stays deterministic no matter what dataset ships in data/.
+    from src.catalog import PROJECT_ROOT
+    fixture = PROJECT_ROOT / "tests" / "fixtures" / "songs_small.csv"
+    pipeline = RecommenderPipeline.from_catalog(str(fixture))
     mode = "gemini" if pipeline.generator.is_available() else "fallback (no API key)"
-    print(f"Running golden-query evaluation in {mode} mode...\n")
+    print(f"Running golden-query evaluation in {mode} mode (fixture catalog)...\n")
     report = EvaluationHarness().run(pipeline)
     print(report.to_markdown())
 

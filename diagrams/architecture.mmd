@@ -16,10 +16,13 @@ classDiagram
         +renderQueryBox() string
         +renderRecommendationCards(recs Recommendation[]) void
         +renderRetrievedPanel(candidates Candidate[]) void
+        +renderPlaylist(playlist Song[]) void
     }
 
     class RecommenderPipeline {
         +recommend(query string, k int) Recommendation[]
+        +recommendSimilar(playlist Song[], k int) Recommendation[]
+        +beyondCatalog(query string, k int) Suggestion[]
         -retryGeneration(query string, candidates Candidate[]) Recommendation[]
         -useFallback(query string, candidates Candidate[]) Recommendation[]
     }
@@ -46,6 +49,7 @@ classDiagram
         +build(songs Song[]) void
         +toDocument(song Song) string
         +search(query string, topN int) Candidate[]
+        +similar(seedSongs Song[], topN int) Candidate[]
     }
 
     class Retriever {
@@ -61,12 +65,22 @@ classDiagram
     class GeminiGenerator {
         +string model
         +generate(query string, candidates Candidate[]) Recommendation[]
+        +interpretQuery(query string, genres string[], moods string[]) string
+        +suggestBeyondCatalog(query string, k int) Suggestion[]
         -buildGroundedPrompt(query string, candidates Candidate[]) string
+    }
+
+    class Suggestion {
+        +string title
+        +string artist
+        +string reason
+        +bool grounded = false
     }
 
     class Validator {
         +validate(recs Recommendation[], candidates Candidate[]) bool
         +findHallucinatedTitles(recs Recommendation[], candidates Candidate[]) string[]
+        +matchTitle(rawTitle string, candidates Candidate[]) string
     }
 
     class FallbackScorer {
@@ -113,6 +127,7 @@ classDiagram
     RecommenderPipeline "1" --> "1" Validator : checks output with
     RecommenderPipeline "1" --> "1" FallbackScorer : falls back to
     GeminiGenerator "1" --> "*" Recommendation : produces
+    GeminiGenerator "1" --> "*" Suggestion : suggests beyond catalog (unvalidated, labeled)
     Validator "1" --> "*" Recommendation : approves or rejects
     FallbackScorer "1" --> "*" Recommendation : produces without API
     RecommenderPipeline "1" --> "*" Recommendation : returns to UI

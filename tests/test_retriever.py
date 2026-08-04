@@ -1,14 +1,22 @@
-"""Tests for the retrieval layer (SongIndex + Retriever)."""
+"""Tests for the retrieval layer (SongIndex + Retriever).
+
+Tests run against a frozen 18-song fixture catalog so they stay
+deterministic regardless of what real dataset ships in data/songs.csv.
+"""
+
+from pathlib import Path
 
 import pytest
 
 from src.catalog import SongCatalog
 from src.retriever import Retriever
 
+FIXTURE_CSV = Path(__file__).parent / "fixtures" / "songs_small.csv"
+
 
 @pytest.fixture(scope="module")
 def retriever() -> Retriever:
-    songs = SongCatalog().load_songs()
+    songs = SongCatalog(FIXTURE_CSV).load_songs()
     return Retriever(songs, top_n=8)
 
 
@@ -39,7 +47,7 @@ def test_related_genre_gets_partial_credit(retriever):
 
 
 def test_top_n_is_respected():
-    songs = SongCatalog().load_songs()
+    songs = SongCatalog(FIXTURE_CSV).load_songs()
     small = Retriever(songs, top_n=3)
     assert len(small.retrieve("chill relaxing evening")) <= 3
 

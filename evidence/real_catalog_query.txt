@@ -1,0 +1,27 @@
+Loaded songs: 7920
+
+============================================================
+  Query: "sad acoustic songs for a rainy evening"
+============================================================
+
+  Retrieved candidates (top 8):
+    - nuts (feat. rainy bear) (emo rap, cloud rap/sad)  relevance=0.29  matched: rainy, sad
+    - SAD! (emo rap/sad)  relevance=0.27  matched: sad
+    - Evening In The Tavern (medieval/)  relevance=0.25  matched: evening
+    - changes (emo rap/sad)  relevance=0.23  matched: sad
+    - High Hopes (emo/sad)  relevance=0.23  matched: sad
+    - Riot (emo rap/sad)  relevance=0.23  matched: sad
+    - Moonlight (emo rap/sad)  relevance=0.22  matched: sad
+    - Hope (emo rap/sad)  relevance=0.22  matched: sad
+
+  Recommendations  [source: gemini]
+
+  1. changes - XXXTENTACION
+     why: This emo rap track captures a deeply sad mood that fits the gloomy ambiance of a rainy evening.
+
+  2. nuts (feat. rainy bear) - Lil Peep
+     why: With its sad mood and emo rap genre, this song matches the melancholic atmosphere of a quiet, rainy night.
+
+  3. SAD! - XXXTENTACION
+     why: This popular emo rap song delivers a sad mood well-suited for listening during a somber evening indoors.
+

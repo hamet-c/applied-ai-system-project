@@ -87,8 +87,9 @@ def _valence_words(valence: float) -> str:
 def _context_tags(song: Song) -> str:
     """Derived 'editorial' tags, like the activity playlists real apps curate."""
     tags = []
-    study_genres = {"lofi", "ambient", "classical"}
-    if (song.energy < 0.5 and song.acousticness > 0.5) or song.genre in study_genres:
+    study_markers = ("lofi", "lo-fi", "ambient", "classical", "sleep", "study", "chillhop")
+    if ((song.energy < 0.5 and song.acousticness > 0.5)
+            or any(m in song.genre for m in study_markers)):
         tags.append("study studying focus focused concentration homework reading working coding background")
     if song.energy > 0.8 and song.danceability > 0.6:
         tags.append("workout gym running exercise training pump adrenaline")
@@ -100,7 +101,7 @@ def _context_tags(song: Song) -> str:
         # "asleep"/"sleepy" included: edge-case testing showed the query
         # "music to fall asleep to" missed the plain "sleep" vocabulary.
         tags.append("sleep sleeping asleep sleepy bedtime nap meditation quiet-night")
-    if song.genre == "synthwave":
+    if "synthwave" in song.genre:
         tags.append("driving drive night-drive road roadtrip retro neon")
     return " ".join(tags)
 
@@ -123,15 +124,31 @@ class SongIndex:
         self._idf: Dict[str, float] = {}
 
     def to_document(self, song: Song) -> str:
-        """Render one song as searchable text. Repetition = importance."""
-        genre_extra = " ".join(RELATED_GENRES.get(song.genre, []))
-        tempo_words = "slow" if song.tempo_bpm < 85 else ("fast quick" if song.tempo_bpm > 125 else "")
+        """Render one song as searchable text. Repetition = importance.
+
+        Datasets without audio features load them as a neutral 0.5 — those
+        songs get no feature words rather than misleading ones. Multi-genre
+        strings ("country hip hop, southern hip hop") match related genres
+        by substring.
+        """
+        related = set()
+        for key, values in RELATED_GENRES.items():
+            if key and key in song.genre:
+                related.update(values)
+        genre_extra = " ".join(sorted(related))
+
+        tempo_words = ""
+        if song.tempo_bpm:
+            tempo_words = "slow" if song.tempo_bpm < 85 else ("fast quick" if song.tempo_bpm > 125 else "")
         acoustic_words = ""
         if song.acousticness > 0.6:
             acoustic_words = "acoustic organic unplugged natural instrumental"
         elif song.acousticness < 0.25:
             acoustic_words = "electronic electric synth produced"
         dance_words = "danceable groovy bouncy rhythmic" if song.danceability > 0.7 else ""
+        energy_words = _energy_words(song.energy) if song.energy != 0.5 else ""
+        valence_words = _valence_words(song.valence) if song.valence != 0.5 else ""
+        popular_words = "popular hit well-known famous" if song.popularity >= 75 else ""
 
         parts = [
             song.title,
@@ -140,11 +157,13 @@ class SongIndex:
             (song.mood + " ") * 3,           # mood: equally explicit intent
             genre_extra,                      # related genres: partial credit
             (_context_tags(song) + " ") * 2,  # activity intent ("studying")
-            _energy_words(song.energy),
-            _valence_words(song.valence),
+            energy_words,
+            valence_words,
             acoustic_words,
             dance_words,
             tempo_words,
+            popular_words,
+            "explicit" if song.explicit else "",
         ]
         return " ".join(p for p in parts if p)
 
@@ -180,6 +199,40 @@ class SongIndex:
         norm = math.sqrt(sum(w * w for w in vec.values())) or 1.0
         return {term: w / norm for term, w in vec.items()}
 
+    def similar(self, seed_songs: List[Song], top_n: int = 8) -> List[Candidate]:
+        """Songs most similar to a set of seeds (e.g. a playlist).
+
+        Averages the seeds' TF-IDF vectors into a 'taste centroid' and ranks
+        every other song by cosine similarity to it — pure content-based
+        recommendation over the same index that search uses.
+        """
+        seed_ids = {s.id for s in seed_songs}
+        seed_vecs = [vec for song, vec in zip(self.songs, self._doc_vectors)
+                     if song.id in seed_ids]
+        if not seed_vecs:
+            return []
+
+        centroid: Dict[str, float] = {}
+        for vec in seed_vecs:
+            for term, w in vec.items():
+                centroid[term] = centroid.get(term, 0.0) + w / len(seed_vecs)
+        # The centroid's heaviest terms describe the playlist's shared vibe.
+        top_terms = sorted(centroid, key=centroid.get, reverse=True)[:15]
+
+        candidates: List[Candidate] = []
+        for song, doc_tokens, doc_vec in zip(self.songs, self._doc_tokens, self._doc_vectors):
+            if song.id in seed_ids:
+                continue
+            score = sum(w * doc_vec.get(term, 0.0) for term, w in centroid.items())
+            if score <= 0:
+                continue
+            score *= 1.0 + 0.15 * (song.popularity / 100.0)
+            matched = [t for t in top_terms if t in doc_tokens][:5]
+            candidates.append(Candidate(song=song, relevance_score=score, matched_terms=matched))
+
+        candidates.sort(key=lambda c: c.relevance_score, reverse=True)
+        return candidates[:top_n]
+
     def search(self, query: str, top_n: int = 8) -> List[Candidate]:
         query_tokens = tokenize(query)
         if not query_tokens or not self.songs:
@@ -191,6 +244,8 @@ class SongIndex:
             score = sum(w * doc_vec.get(term, 0.0) for term, w in query_vec.items())
             if score <= 0:
                 continue
+            # Mild popularity boost: among similar matches, well-known first.
+            score *= 1.0 + 0.15 * (song.popularity / 100.0)
             matched = sorted(set(query_tokens) & set(doc_tokens))
             candidates.append(Candidate(song=song, relevance_score=score, matched_terms=matched))
 

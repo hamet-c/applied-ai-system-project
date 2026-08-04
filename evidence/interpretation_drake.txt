@@ -1,0 +1,28 @@
+Loaded songs: 18
+
+============================================================
+  Query: "Drake"
+============================================================
+
+  Retrieved candidates (top 8):
+    - Concrete Kings (hip-hop/confident)  relevance=0.74  matched: confident, energetic, hip, hop
+    - Neon Warehouse (electronic/energetic)  relevance=0.09  matched: energetic
+    - Iron Verdict (metal/dark)  relevance=0.03  matched: energetic
+    - Storm Runner (rock/intense)  relevance=0.03  matched: energetic
+    - Rooftop Lights (indie pop/happy)  relevance=0.03  matched: energetic
+    - Sunrise City (pop/happy)  relevance=0.02  matched: energetic
+    - Gym Hero (pop/intense)  relevance=0.02  matched: energetic
+    - Night Drive Loop (synthwave/moody)  relevance=0.02  matched: energetic
+
+  Recommendations  [source: gemini]
+  note: No direct matches — interpreted your request as "hip-hop confident energetic".
+
+  1. Concrete Kings - Vell Rhymes
+     why: Since you asked for Drake, this hip-hop track matches the genre with a confident mood, an energy of 0.78, a tempo of 95 BPM, and low acousticness of 0.08.
+
+  2. Neon Warehouse - Pulsewave
+     why: As an alternative recommendation matching urban electronic vibes, it features a high energy of 0.96, a tempo of 128 BPM, and low acousticness of 0.04.
+
+  3. Gym Hero - Max Pulse
+     why: To round out your request with a rhythmic beat, this pop song offers an intense mood, high energy of 0.93, a tempo of 132 BPM, and minimal acousticness of 0.05.
+

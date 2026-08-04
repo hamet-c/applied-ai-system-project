@@ -1,12 +1,12 @@
-Running golden-query evaluation in gemini mode...
+Running golden-query evaluation in gemini mode (fixture catalog)...
 
 | Query | Expected in top 5 | Recall@5 | Source |
 |---|---|---|---|
 | calm acoustic songs for studying late at night | 3/4 (Focus Flow, Library Rain, Spacewalk Thoughts) | 0.75 | gemini |
 | high energy workout music | 4/4 (Gym Hero, Iron Verdict, Neon Warehouse, Storm Runner) | 1.00 | gemini |
-| happy upbeat pop songs | 2/3 (Rooftop Lights, Sunrise City) | 0.67 | gemini |
+| happy upbeat pop songs | 3/3 (Island Time, Rooftop Lights, Sunrise City) | 1.00 | gemini |
 | dark intense metal | 2/2 (Iron Verdict, Storm Runner) | 1.00 | gemini |
 | romantic r&b for a date night | 1/1 (Velvet Hours) | 1.00 | gemini |
 | sad slow classical music | 1/1 (Autumn Nocturne) | 1.00 | gemini |
 
-**Average recall@5: 0.90** · average precision@5: 0.43 · hallucinated titles: 0
+**Average recall@5: 0.96** · average precision@5: 0.47 · hallucinated titles: 0

@@ -57,11 +57,27 @@ class GeminiGenerator:
         lines = []
         for i, cand in enumerate(candidates, start=1):
             s = cand.song
-            lines.append(
-                f'{i}. "{s.title}" by {s.artist} — genre: {s.genre}, mood: {s.mood}, '
-                f"energy: {s.energy}, tempo: {s.tempo_bpm:.0f} BPM, valence: {s.valence}, "
-                f"danceability: {s.danceability}, acousticness: {s.acousticness}"
-            )
+            # Only mention attributes the dataset actually provides (missing
+            # audio features load as a neutral 0.5 / tempo 0) — otherwise the
+            # model cites meaningless numbers in its reasons.
+            attrs = []
+            if s.genre:
+                attrs.append(f"genre: {s.genre}")
+            if s.mood:
+                attrs.append(f"mood: {s.mood}")
+            if s.energy != 0.5:
+                attrs.append(f"energy: {s.energy}")
+            if s.tempo_bpm:
+                attrs.append(f"tempo: {s.tempo_bpm:.0f} BPM")
+            if s.valence != 0.5:
+                attrs.append(f"valence: {s.valence}")
+            if s.danceability != 0.5:
+                attrs.append(f"danceability: {s.danceability}")
+            if s.acousticness != 0.5:
+                attrs.append(f"acousticness: {s.acousticness}")
+            if s.popularity:
+                attrs.append(f"popularity: {s.popularity:.0f}/100")
+            lines.append(f'{i}. "{s.title}" by {s.artist} — ' + ", ".join(attrs))
         candidate_block = "\n".join(lines)
 
         prompt = f"""You are the recommendation engine of a small music app.
@@ -75,6 +91,8 @@ Pick the {k} best songs for this request, best first.
 
 Rules:
 - Recommend ONLY songs from the list above, copying their titles EXACTLY.
+- The "title" field must contain ONLY the song title — no quotes around it,
+  no artist name, no "by ...".
 - Never invent a song. If nothing fits well, pick the closest matches anyway.
 - Each reason must be one sentence tied to the user's request, mentioning
   concrete attributes (genre, mood, energy, tempo, acousticness).
@@ -86,13 +104,10 @@ Respond with JSON only, exactly in this shape:
             prompt += f"\n\nIMPORTANT CORRECTION: {correction}"
         return prompt
 
-    def generate(self, query: str, candidates: List[Candidate], k: int = 5,
-                 correction: str = "") -> List[dict]:
-        """Return a list of {"title": ..., "reason": ...} picks from Gemini."""
+    def _call_json(self, prompt: str) -> dict:
         from google.genai import types
 
         client = self._get_client()
-        prompt = self.build_grounded_prompt(query, candidates, k, correction)
         response = client.models.generate_content(
             model=self.model,
             contents=prompt,
@@ -101,7 +116,50 @@ Respond with JSON only, exactly in this shape:
                 temperature=0.4,
             ),
         )
-        data = json.loads(response.text)
+        return json.loads(response.text)
+
+    def interpret_query(self, query: str, genres: List[str], moods: List[str]) -> str:
+        """Translate an out-of-catalog request (e.g. a real artist) into
+        catalog vocabulary, so retrieval can find the closest vibe."""
+        prompt = f"""A music app user asked for: "{query}"
+
+The app's catalog found no direct matches. Rewrite the request as a short
+search phrase describing the MUSICAL STYLE the user wants, using only:
+- genres from this list: {", ".join(sorted(genres))}
+- moods from this list: {", ".join(sorted(moods))}
+- energy words: calm, moderate, energetic
+- optionally: acoustic or electronic
+
+If the request names a real artist, describe that artist's typical style
+with those words. Respond with JSON only: {{"search_phrase": "<phrase>"}}"""
+        data = self._call_json(prompt)
+        return str(data.get("search_phrase", "")).strip()
+
+    def suggest_beyond_catalog(self, query: str, k: int = 3) -> List[dict]:
+        """Real-world song suggestions from the model's general knowledge.
+        NOT grounded, NOT validated — callers must label them as such."""
+        prompt = f"""Suggest {k} real, well-known songs for this request: "{query}"
+
+For each, give a one-sentence reason tied to the request.
+Respond with JSON only, exactly in this shape:
+{{"suggestions": [{{"title": "...", "artist": "...", "reason": "..."}}]}}"""
+        data = self._call_json(prompt)
+        suggestions = data.get("suggestions", [])
+        if not isinstance(suggestions, list):
+            return []
+        return [
+            {"title": str(s.get("title", "")).strip(),
+             "artist": str(s.get("artist", "")).strip(),
+             "reason": str(s.get("reason", "")).strip()}
+            for s in suggestions
+            if isinstance(s, dict) and s.get("title")
+        ][:k]
+
+    def generate(self, query: str, candidates: List[Candidate], k: int = 5,
+                 correction: str = "") -> List[dict]:
+        """Return a list of {"title": ..., "reason": ...} picks from Gemini."""
+        prompt = self.build_grounded_prompt(query, candidates, k, correction)
+        data = self._call_json(prompt)
         picks = data.get("picks", [])
         if not isinstance(picks, list):
             raise ValueError("Gemini response JSON missing 'picks' list")
