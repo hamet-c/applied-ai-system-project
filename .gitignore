@@ -16,3 +16,7 @@ venv/
 
 # Secrets (API keys live here, never committed)
 .env
+
+# Warmed demo responses (regenerate with: python -m src.warmup)
+.demo_cache.json
+.demo_cache.tmp

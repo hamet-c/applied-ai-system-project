@@ -5,6 +5,7 @@ Run with:  streamlit run app.py
 
 import streamlit as st
 
+from src import democache
 from src.pipeline import RecommenderPipeline
 
 st.set_page_config(page_title="Songly", page_icon="🎵", layout="centered")
@@ -32,7 +33,17 @@ def get_recommendations(query: str, k: int):
     key = (query, k)
     if key in cache:
         return cache[key]
+
     pipe = get_pipeline()
+    # Disk cache (warmed by `python -m src.warmup`) survives restarts, so a
+    # rate limit or dropped network can't break a demo of these queries.
+    entry = democache.get(democache.query_key(query, k))
+    if entry:
+        restored = democache.decode_recommendations(entry, songs_by_id)
+        if restored:
+            cache[key] = restored
+            return restored
+
     recommendations = pipe.recommend(query, k=k)
     result = (pipe.last_candidates, recommendations, pipe.last_source, pipe.last_note)
     if not pipe.last_transient:  # transient API failures retry next time
@@ -45,10 +56,27 @@ def get_beyond_catalog(query: str):
     cache = st.session_state.setdefault("beyond_cache", {})
     if query in cache:
         return cache[query]
+    entry = democache.get(democache.beyond_key(query))
+    if entry and entry.get("suggestions"):
+        cache[query] = entry["suggestions"]
+        return cache[query]
     suggestions = get_pipeline().beyond_catalog(query, k=3)
     if suggestions:
         cache[query] = suggestions
     return suggestions
+
+
+def get_similar(playlist_songs, k: int):
+    """Playlist suggestions, disk-cached the same way as queries."""
+    pipe = get_pipeline()
+    entry = democache.get(democache.similar_key([s.id for s in playlist_songs], k))
+    if entry:
+        restored = democache.decode_recommendations(entry, songs_by_id)
+        if restored:
+            _, recs, source, note = restored
+            return recs, source, note
+    recs = pipe.recommend_similar(playlist_songs, k=k)
+    return recs, pipe.last_source, pipe.last_note
 
 
 pipeline = get_pipeline()
@@ -130,8 +158,9 @@ with st.sidebar:
 
 # ---------- Main ----------
 st.title("🎵 Songly")
-st.caption("A RAG-powered music recommender over a tiny catalog. "
-           "Describe what you want to hear — in your own words.")
+st.caption(f"A RAG-powered music recommender over a "
+           f"{len(pipeline.retriever.index.songs):,}-song catalog. "
+           "Describe what you want to hear, in your own words.")
 
 
 def _set_query(text: str) -> None:
@@ -140,7 +169,7 @@ def _set_query(text: str) -> None:
 
 cols = st.columns(len(EXAMPLE_QUERIES))
 for col, example in zip(cols, EXAMPLE_QUERIES):
-    col.button(example, on_click=_set_query, args=(example,), use_container_width=True)
+    col.button(example, on_click=_set_query, args=(example,), width='stretch')
 
 query = st.text_input(
     "What are you in the mood for?",
@@ -159,7 +188,7 @@ with st.expander(f"🎼 Browse the catalog ({len(_catalog_songs):,} songs)"):
         [{"Title": s.title, "Artist": s.artist, "Genre": s.genre,
           "Popularity": int(s.popularity)}
          for s in _browse],
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
@@ -218,7 +247,7 @@ if query.strip():
                     }
                     for c in candidates
                 ],
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
             )
 else:
@@ -244,15 +273,13 @@ else:
 
     col_a, col_b = st.columns([2, 1])
     find = col_a.button("🎯 Find similar songs", type="primary",
-                        use_container_width=True)
-    col_b.button("🗑️ Clear playlist", use_container_width=True,
+                        width='stretch')
+    col_b.button("🗑️ Clear playlist", width='stretch',
                  on_click=lambda: st.session_state.playlist.clear())
 
     if find:
         with st.spinner("Finding songs that fit your playlist..."):
-            recs = pipeline.recommend_similar(playlist_songs, k=k)
-        st.session_state.similar_results = (
-            recs, pipeline.last_source, pipeline.last_note)
+            st.session_state.similar_results = get_similar(playlist_songs, k)
         st.session_state.similar_snapshot = snapshot
 
     if "similar_results" in st.session_state:

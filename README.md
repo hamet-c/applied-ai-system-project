@@ -37,6 +37,7 @@ User query → Retriever (TF-IDF over SongIndex) → Candidates
 - **`FallbackScorer`** ([src/fallback.py](src/fallback.py)): the original v1 scoring recipe, now driven by a taste profile derived from the query text. Runs when there's no API key or generation fails.
 - **`RecommenderPipeline`** ([src/pipeline.py](src/pipeline.py)): orchestrates the flow above; the CLI, UI, tests, and evaluator all share it.
 - **`EvaluationHarness`** ([src/evaluation.py](src/evaluation.py)): golden-query testing (see Testing Summary).
+- **Demo cache** ([src/democache.py](src/democache.py), [src/warmup.py](src/warmup.py)): an optional disk cache of real Gemini responses, warmed ahead of a live demo so a rate limit or dropped network can't interrupt it. Entries store song ids rather than song objects, so a changed catalog misses the cache instead of showing stale results.
 
 Three checkpoints watch the AI's output: the **Validator** at runtime, the **EvaluationHarness** before changes ship, and the **human**: the UI shows a "What was retrieved" panel so you can compare the picks against the retrieval set and judge the grounding yourself.
 
@@ -66,6 +67,14 @@ Three checkpoints watch the AI's output: the **Validator** at runtime, the **Eva
 
    > **Free-tier tip:** Google's free quotas are per-model and per-day. If the app starts falling back with a `429 RESOURCE_EXHAUSTED` note after heavy use, add `GEMINI_MODEL=gemini-flash-lite-latest` to your `.env`; the lite tier has a separate (larger) quota.
 
+   > **Before a live demo,** warm the disk cache so a rate limit can't interrupt you:
+   >
+   > ```bash
+   > python -m src.warmup
+   > ```
+   >
+   > This pre-runs the demo queries and stores the real Gemini responses in `.demo_cache.json` (gitignored). Those exact queries then answer instantly with no API call, and the cache survives restarts and browser refreshes. Anything else you type still works normally: a live call, or the rule-based fallback if the API is unavailable. Delete the cache file to force live calls again.
+
 4. Run the web app:
 
    ```bash
@@ -81,7 +90,7 @@ Three checkpoints watch the AI's output: the **Validator** at runtime, the **Eva
 5. Run the tests and the evaluation harness:
 
    ```bash
-   pytest                      # 35 unit tests, all offline
+   pytest                      # 40 unit tests, all offline
    python -m src.evaluation    # golden-query metrics
    ```
 
@@ -243,11 +252,11 @@ The third guardrail (the Validator rejecting hallucinated titles and retrying) c
 
 ## Testing Summary
 
-> **Summary: 35/35 automated tests pass. Golden-query recall@5 averaged 0.96 with Gemini (0.90 in fallback mode) with 0 hallucinated titles in both. Real-world testing surfaced six genuine failures along the way, from a retired model ID to Gemini decorating song titles until validation rejected them. Every one of them either improved the system or is now covered by a regression test; the full list is under "What didn't work at first" below.**
+> **Summary: 40/40 automated tests pass. Golden-query recall@5 averaged 0.96 with Gemini (0.90 in fallback mode) with 0 hallucinated titles in both. Real-world testing surfaced six genuine failures along the way, from a retired model ID to Gemini decorating song titles until validation rejected them. Every one of them either improved the system or is now covered by a regression test; the full list is under "What didn't work at first" below.**
 
 The system's reliability is measured three ways: **automated tests** (unit + golden-query metrics), **human evaluation** (the edge-case table below), and **error handling** (every degraded path, whether a missing API key, hallucinated titles, API exceptions, or zero retrieval matches, records *why* it degraded and surfaces that note in the CLI and UI).
 
-**What worked:** 35 unit tests pass, covering retrieval relevance, hallucination detection (including canonicalization of decorated titles), query-to-preference parsing, out-of-catalog query interpretation, playlist similarity, and every pipeline path (valid generation, retry-then-succeed, persistent-hallucination fallback, no-key fallback, API-exception fallback). The golden-query harness (`python -m src.evaluation`) scores 6 realistic queries against human-chosen expected songs:
+**What worked:** 40 unit tests pass, covering retrieval relevance, hallucination detection (including canonicalization of decorated titles), query-to-preference parsing, out-of-catalog query interpretation, playlist similarity, demo-cache round-tripping, and every pipeline path (valid generation, retry-then-succeed, persistent-hallucination fallback, no-key fallback, API-exception fallback). The golden-query harness (`python -m src.evaluation`) scores 6 realistic queries against human-chosen expected songs:
 
 | Query | Expected found in top 5 | Recall@5 |
 |---|---|---|
